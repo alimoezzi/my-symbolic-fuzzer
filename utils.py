@@ -79,3 +79,51 @@ def used_identifiers(src):
 def to_src(astnode):
     return astor.to_source(astnode).strip()
 
+def declarations(astnode, hm=None):
+    if hm is None:
+        hm = {}
+    if isinstance(astnode, ast.Module):
+        for b in astnode.body:
+            declarations(b, hm)
+    elif isinstance(astnode, ast.FunctionDef):
+        #hm[astnode.name + '__return__'] = translate_to_z3_name(astnode.returns.id)
+        for a in astnode.args.args:
+            hm[a.arg] = translate_to_z3_name(a.annotation.id)
+        for b in astnode.body:
+            declarations(b, hm)
+    elif isinstance(astnode, ast.Call):
+        # get declarations from the function summary.
+        n = astnode.function
+        assert isinstance(n, ast.Name)  # for now.
+        name = n.id
+        hm.update(dict(Function_Summaries[name]['vars']))
+    elif isinstance(astnode, ast.AnnAssign):
+        assert isinstance(astnode.target, ast.Name)
+        if isinstance(astnode.value, ast.List): # ADDED BY US
+            if isinstance(astnode.value.elts[0], ast.Num):
+                etype = type(astnode.value.elts[0].n)
+            else:
+                etype = type(astnode.value.elts[0].s)
+            for i in range(0, len(astnode.value.elts)):
+                hm[f"{astnode.target.id}_{i}"] = translate_to_z3_name(etype.__name__)
+        else:
+            hm[astnode.target.id] = translate_to_z3_name(astnode.annotation.id)
+    elif isinstance(astnode, ast.Assign):
+        if not isinstance(astnode.targets[0], ast.Subscript): # ADDED BY US
+            for t in astnode.targets:
+                assert isinstance(t, ast.Name)
+                assert t.id in hm
+    elif isinstance(astnode, ast.AugAssign):
+        assert isinstance(astnode.target, ast.Name)
+        assert astnode.target.id in hm
+    elif isinstance(astnode, (ast.If, ast.For, ast.While)):
+        for b in astnode.body:
+            declarations(b, hm)
+        for b in astnode.orelse:
+            declarations(b, hm)
+    elif isinstance(astnode, ast.Return):
+        pass
+    else:
+        return {}
+        # raise Exception(to_src(astnode))
+    return hm
