@@ -79,6 +79,12 @@ def used_identifiers(src):
 def to_src(astnode):
     return astor.to_source(astnode).strip()
 
+# *******                                               *******
+# *******       SOME CHANGES IN FUZZING BOOK CODE       *******
+# *******                                               *******
+
+# ASSERTION ERROR FOR UNSATISFIED CORES REMOVED
+# SUPPORT FOR LIST ADDED
 def declarations(astnode, hm=None):
     if hm is None:
         hm = {}
