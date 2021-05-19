@@ -133,3 +133,18 @@ def declarations(astnode, hm=None):
         return {}
         # raise Exception(to_src(astnode))
     return hm
+
+def identifiers_with_types(identifiers, defined):
+    with_types = dict(defined)
+    for i in identifiers:
+        if i[0] == '_':
+            if i.count('_') > 2: # THIS IF IS ADDED BY US
+                l = i.rfind('_')
+                name = i[1:l]
+            else:
+                nxt = i[1:].find('_', 1)
+                name = i[1:nxt + 1]
+            assert name in defined
+            typ = defined[name]
+            with_types[i] = typ
+    return with_types
