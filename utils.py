@@ -1,6 +1,9 @@
 import z3, ast, astor, inspect
 from contextlib import contextmanager
 
+# *******                                                                                               *******
+# *******       SAME AS FUZZING BOOK CODE (CHECK BELOW TO SEE WHERE CHANGES IN THIS FILE STARTED)       *******
+# *******                                                                                               *******
 
 MAX_DEPTH = 100
 MAX_TRIES = 100
@@ -134,6 +137,7 @@ def declarations(astnode, hm=None):
         # raise Exception(to_src(astnode))
     return hm
 
+# SUPPORT FOR LIST ADDED
 def identifiers_with_types(identifiers, defined):
     with_types = dict(defined)
     for i in identifiers:
@@ -149,6 +153,7 @@ def identifiers_with_types(identifiers, defined):
             with_types[i] = typ
     return with_types
 
+# SUPPORT FOR LIST ADDED
 def rename_variables(astnode, env):
     if isinstance(astnode, ast.BoolOp):
         fn = 'z3.And' if isinstance(astnode.op, ast.And) else 'z3.Or'
@@ -192,6 +197,8 @@ def rename_variables(astnode, env):
     else:
         return astnode
 
+# ASSERTION ERROR FOR UNSATISFIED CORES REMOVED
+# SUPPORT FOR LIST (BOTH ANNOTATED AND NON-ANNOTATED) ADDED
 def to_single_assignment_predicates(path):
     env = {}
     new_path = []
