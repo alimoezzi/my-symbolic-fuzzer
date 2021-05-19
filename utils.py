@@ -148,3 +148,46 @@ def identifiers_with_types(identifiers, defined):
             typ = defined[name]
             with_types[i] = typ
     return with_types
+
+def rename_variables(astnode, env):
+    if isinstance(astnode, ast.BoolOp):
+        fn = 'z3.And' if isinstance(astnode.op, ast.And) else 'z3.Or'
+        return ast.Call(
+            ast.Name(fn, None),
+            [rename_variables(i, env) for i in astnode.values], [])
+    elif isinstance(astnode, ast.BinOp):
+        return ast.BinOp(
+            rename_variables(astnode.left, env), astnode.op,
+            rename_variables(astnode.right, env))
+    elif isinstance(astnode, ast.UnaryOp):
+        if isinstance(astnode.op, ast.Not):
+            return ast.Call(
+                ast.Name('z3.Not', None),
+                [rename_variables(astnode.operand, env)], [])
+        else:
+            return ast.UnaryOp(astnode.op,
+                               rename_variables(astnode.operand, env))
+    elif isinstance(astnode, ast.Call):
+        return ast.Call(astnode.func,
+                        [rename_variables(i, env) for i in astnode.args],
+                        astnode.keywords)
+    elif isinstance(astnode, ast.Compare):
+        return ast.Compare(
+            rename_variables(astnode.left, env), astnode.ops,
+            [rename_variables(i, env) for i in astnode.comparators])
+    elif isinstance(astnode, ast.Name):
+        if astnode.id not in env:
+            env[astnode.id] = 0
+        num = env[astnode.id]
+        return ast.Name('_%s_%d' % (astnode.id, num), astnode.ctx)
+    elif isinstance(astnode, ast.Subscript): # THIS ELIF IS ADDED BY US
+        id = to_src(astnode)
+        name = id[:-3] + '_' + id[-2]
+        if name not in env:
+            env[name] = 0
+        num = env[name]
+        return ast.Name('_%s_%d' % (name, num), astnode.ctx)
+    elif isinstance(astnode, ast.Return):
+        return ast.Return(rename_variables(astnode.value, env))
+    else:
+        return astnode
