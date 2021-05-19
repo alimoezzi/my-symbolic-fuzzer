@@ -191,3 +191,64 @@ def rename_variables(astnode, env):
         return ast.Return(rename_variables(astnode.value, env))
     else:
         return astnode
+
+def to_single_assignment_predicates(path):
+    env = {}
+    new_path = []
+    completed_path = False
+    for i, node in enumerate(path):
+        ast_node = node.cfgnode.ast_node
+        new_node = None
+        if isinstance(ast_node, ast.AnnAssign) and ast_node.target.id in {
+                'exit'}:
+            completed_path = True
+            new_node = None
+        elif isinstance(ast_node, ast.AnnAssign) and ast_node.target.id in {'enter'}:
+            args = [
+                ast.parse(
+                    "%s == _%s_0" %
+                    (a.id, a.id)).body[0].value for a in ast_node.annotation.args]
+            new_node = ast.Call(ast.Name('z3.And', None), args, [])
+        elif isinstance(ast_node, ast.AnnAssign) and ast_node.target.id in {'_if', '_while'}:
+            new_node = rename_variables(ast_node.annotation, env)
+            if node.order != 0:
+                # assert node.order == 1 # WE COMMENTED THIS ASSERTION OUT
+                if node.order != 1:
+                    return [], False
+                new_node = ast.Call(ast.Name('z3.Not', None), [new_node], [])
+        elif isinstance(ast_node, ast.Assign): # THIS ELIF IS ADDED BY US
+            if isinstance(ast_node.targets[0], ast.Subscript):
+                identifier = to_src(ast_node.targets[0])
+                assigned = identifier[:-3] + '_' + identifier[-2]
+                value = [rename_variables(ast_node.value, env)]
+                env[assigned] = 0 if assigned not in env else env[assigned] + 1
+                target = ast.Name('_%s_%d' % (assigned, env[assigned]), None)
+            else:
+                assigned = ast_node.targets[0].id
+                value = [rename_variables(ast_node.value, env)]
+                env[assigned] = 0 if assigned not in env else env[assigned] + 1
+                target = ast.Name('_%s_%d' % (assigned, env[assigned]), None)
+            new_node = ast.Expr(ast.Compare(target, [ast.Eq()], value))
+        elif isinstance(ast_node, ast.AnnAssign): # THIS ELIF IS ADDED BY US
+            if isinstance(ast_node.value, ast.List):
+                for i, element in enumerate(ast_node.value.elts):
+                    assigned = ast_node.target.id + "_" + str(i)
+                    value = [rename_variables(element, env)]
+                    env[assigned] = 0
+                    target = ast.Name('_%s_%d' % (assigned, env[assigned]), None)
+                    new_path.append(ast.Expr(ast.Compare(target, [ast.Eq()], value)))
+                pass
+            else:
+                assigned = ast_node.target.id
+                value = [rename_variables(ast_node.value, env)]
+                env[assigned] = 0 if assigned not in env else env[assigned] + 1
+                target = ast.Name('_%s_%d' % (assigned, env[assigned]), None)
+                new_node = ast.Expr(ast.Compare(target, [ast.Eq()], value))
+        elif isinstance(ast_node, (ast.Return, ast.Pass)):
+            new_node = None
+        else:
+            continue
+            # s = "NI %s %s" % (type(ast_node), ast_node.target.id) # WE COMMENTED THIS ASSERTION OUT
+            # raise Exception(s)
+        new_path.append(new_node)
+    return new_path, completed_path
