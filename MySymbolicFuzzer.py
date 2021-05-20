@@ -34,3 +34,41 @@ class MySymbolicFuzzer(AdvancedSymbolicFuzzer):
                     completed.append(path)
             path_lst = new_paths
         return completed + path_lst
+
+    # SUPPORT FOR UNSAT CORE ADDED
+    def solve_constraint(self, constraints, pNodeList):
+        identifiers = [c for i in constraints for c in used_identifiers(i)]  # <- changes
+        with_types = identifiers_with_types(identifiers, self.used_variables)  # <- changes
+        decl = define_symbolic_vars(with_types, '')
+        exec(decl)
+
+        solutions = {}
+        with checkpoint(self.z3):
+            unsatisfied_path = {}
+
+            for i, constraint in enumerate(constraints):
+                unsatisfied_path[z3.Bool('p'+ str(i))] = constraint
+                eval(f"self.z3.assert_and_track({constraint},'p{str(i)}')")
+            if self.z3.check() != z3.sat:
+                print(f"\n--- ERROR: UNSATISFIABLE PATH FOUND ---\n")
+                print(f"Unsatisfiable core length: {len(self.z3.unsat_core())}")
+                unsatisfied_cores = self.z3.unsat_core()
+                print(f"Unsatisfiable cores: ")
+                for j, unsatisfied_core in enumerate(unsatisfied_cores):
+                    if unsatisfied_core not in unsatisfied_path:
+                        continue
+                    print(f"\t {j+1} : {unsatisfied_path[unsatisfied_core]}")
+
+                print(f"Unsatisfiable Path: ")
+                for node in pNodeList:
+                    cfgnode_json = node.cfgnode.to_json()
+                    at = cfgnode_json['at']
+                    ast = cfgnode_json['ast']
+                    print(f"\tLine {at} : {ast}")
+                return {}, True
+            model = self.z3.model()
+            solutions = {d.name(): model[d] for d in model.decls()}
+            my_args = {k: solutions.get(k, None) for k in self.fn_args}
+        predicate = f"z3.And({','.join([f'{k} == {v}' for k, v in my_args.items() if v is not None])})"
+        eval(f"self.z3.add(z3.Not({predicate}))")
+        return my_args, False
