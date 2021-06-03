@@ -32,7 +32,7 @@ To render the generated DOT source code, you also need to install [Graphviz](htt
 
 - create your `example.py` file in [examples directory](https://github.com/realsarm/my-symbolic-fuzzer/tree/main/examples) (all files of example directory will be imported to `main.py` dynamically using [importdir](https://gitlab.com/aurelien-lourot/importdir)) or use one of the examples that already exist.
 - `python main.py`
-- The tool will ask for max_depth(e.g 10), max_tries(e.g 10), max_iter(e.g 10), example_program(e.g [a_check_triangle_book_example]([./](https://github.com/realsarm/my-symbolic-fuzzer/blob/main/examples/a_check_triangle_book_example.py))), and function_from_example_program(e.g [a_check_triangle_book_example](https://github.com/realsarm/my-symbolic-fuzzer/blob/main/examples/a_check_triangle_book_example.py))
+- The tool will ask for max_depth(e.g 10), max_tries(e.g 10), max_iter(e.g 10), example_program(e.g [a_check_triangle_book_example](https://github.com/realsarm/my-symbolic-fuzzer/tree/main/examples)), and function_from_example_program(e.g [a_check_triangle_book_example](https://github.com/realsarm/my-symbolic-fuzzer/blob/main/examples/a_check_triangle_book_example.py))
 - check the result
 
 ## Potential Future Extensions
